@@ -13,6 +13,65 @@ from multiprocessing import Pool
 from tqdm import tqdm
 import healpy as hp
 
+def measureMap3FromKappa(kappa, thetas=[4,8,16,32], nside=2048, verbose=False, doPlots=False, fn_out=""):
+    """ Measured <Map³> from a convergence map, given as Healpy map
+
+    Args:
+        kappa (Healpy map): Convergence kappa. Important: Masked value need to be set to healpy.pixelfunc.UNSEEN
+        thetas (list, optional): List of aperture scale radii in arcmin. Defaults to [4,8,16,32].
+        nside (int, optional): Wished nside for convergence and aperture mass map. Kappa map is degraded to this value. Defaults to 2048.
+        verbose (bool, optional): To switch on verbose mode. Defaults to False.
+        doPlots (bool, optional): To switch on intermediate plot creation. Only makes sense when using this function inside a jupyter notebook. Defaults to False.
+        fn_out (str, optional): Outputfilename for <Map³>. Defaults to "", in which case no output is made.
+    """
+
+    Nthetas=len(thetas) # Number of aperture radii
+
+    # Downgrade kappa map to specified nside
+    if(verbose):
+        print(f"Downgrading kappa map from nside={hp.pixelfunc.get_nside(kappa)} to nside={nside}")
+    kappa=hp.ud_grade(kappa, nside)
+
+
+    # Set mask
+    mask=np.where(kappa!=hp.pixelfunc.UNSEEN)
+    
+    # Calculate aperture mass maps
+    Maps=[] # list that will contain aperture mass maps
+    for i,theta in enumerate(thetas):
+        if verbose:
+            print(f"Calculating aperture mass map for theta {theta}, ({i+1}/{Nthetas})")
+        ac=aperture_mass_computer_curved_sky(nside, theta) # Calculation object for aperture mass map calculation
+        map=ac.Map_fft_from_kappa(kappa) # Calculate aperture mass map with FFT
+        if doPlots:
+            hp.mollview(map, title=r"$M_\mathrm{ap}$ for $\theta$="+f"{theta} arcmin")
+        Maps.append(map) # Add aperture mass map to list
+
+    # Calculate Map³
+    if verbose:
+        print(r"Calculating $M_\mathrm{ap}^3$")
+
+    Map3=np.zeros(Nthetas*(Nthetas+1)*(Nthetas+2)//6) #Vector for Map3 measurement
+    counter=0
+    for i in range(Nthetas):
+        for j in range(i, Nthetas):
+            for k in range(j, Nthetas):
+                map3_mean=np.mean(Maps[i][mask]*Maps[j][mask]*Maps[k][mask])
+                Map3[counter]=map3_mean
+                counter+=1
+    
+    if(fn_out!=""): #Save if outputfilename is given
+        np.savetxt(fn_out, Map3)
+
+    if doPlots:
+        initPlot(usetex=False)
+        fig, ax=plt.subplots()
+        prepareMap3Plot(ax)
+        ax.plot(Map3)
+        ax.set_ylabel(r"$\langle M_\mathrm{ap}^3 \rangle$")
+        finalizePlot(ax, title=r"$\langle M_\mathrm{ap}^3\rangle$ from curved sky "+f"nside={nside}")
+
+
 class aperture_mass_computer:
     """
     a class handling the computation of aperture masses for flat sky maps.
