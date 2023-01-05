@@ -82,7 +82,7 @@ class DSS_class:
         """
 
         if(hp.get_nside(density_contrast)!=self.nside):
-            print('density contrast does not have nisde '+str(self.nside))
+            print('density contrast has nside '+str(hp.get_nside(density_contrast)))
             print('SGD will be scaled to nside '+str(self.nside))   
             
 
