@@ -14,7 +14,7 @@ from tqdm import tqdm
 import healpy as hp
 
 def measureMap3FromKappa(kappa, thetas=[4,8,16,32], nside=2048, verbose=False, doPlots=False, fn_out=""):
-    """ Measured <Map³> from a convergence map, given as Healpy map
+    """ Measured <Map3> from a convergence map, given as Healpy map
 
     Args:
         kappa (Healpy map): Convergence kappa. Important: Masked value need to be set to healpy.pixelfunc.UNSEEN
@@ -22,7 +22,7 @@ def measureMap3FromKappa(kappa, thetas=[4,8,16,32], nside=2048, verbose=False, d
         nside (int, optional): Wished nside for convergence and aperture mass map. Kappa map is degraded to this value. Defaults to 2048.
         verbose (bool, optional): To switch on verbose mode. Defaults to False.
         doPlots (bool, optional): To switch on intermediate plot creation. Only makes sense when using this function inside a jupyter notebook. Defaults to False.
-        fn_out (str, optional): Outputfilename for <Map³>. Defaults to "", in which case no output is made.
+        fn_out (str, optional): Outputfilename for <Map3>. Defaults to "", in which case no output is made.
     """
 
     Nthetas=len(thetas) # Number of aperture radii
@@ -47,7 +47,7 @@ def measureMap3FromKappa(kappa, thetas=[4,8,16,32], nside=2048, verbose=False, d
             hp.mollview(map, title=r"$M_\mathrm{ap}$ for $\theta$="+f"{theta} arcmin")
         Maps.append(map) # Add aperture mass map to list
 
-    # Calculate Map³
+    # Calculate MapÂ³
     if verbose:
         print(r"Calculating $M_\mathrm{ap}^3$")
 
