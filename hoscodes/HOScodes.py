@@ -1,46 +1,103 @@
 import numpy as np
 import healpy as hp
+import healsparse
 from healpy.sphtfunc import anafast
 import os,sys
 sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/Map3/')#replace with __init__.py
+sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/PDF_Peaks_Minima/')#replace with __init__.py
+sys.path.append('/global/homes/j/jatorres/DSS_clean/')#replace with __init__.py
 from aperture_mass_computer import measureMap3FromKappa
+from Peaks_minima import find_extrema
+from DSS_functions import DSS_fct
 
-config = {'ra_col' : 1,
-          'dec_col' : 2,
-          'g1_col' : 3,
-          'g2_col' : 4,
-          'w_col' : 5,
-          'ra_units' : 'deg',
-          'dec_units' : 'deg'}
-nside_c = 32
-
-class hoscodes():
-    def __init__(self,tomobin):
-        self.tomobin = tomobin
-        #self.tomobins = [Catalog(l, config, flip_g2=True)
-        #                 for l in cat.filenames]
-        #self.Ntomobins = len(cat.filenames)
         
-    def shear2pcf(self,gg,Nbin):
-        #gg = GGCorrelation(nbins = 20, min_sep=0.5, max_sep=475.5, sep_units='arcmin',bin_slop=0.01,)
-        gg.process(self.tomobin, metric = 'Arc')
-        gg.write('treecorr_output/cross_correlation_tomo{}_{}'.format(Nbin,Nbin))
-                
-    def shear2pxcf(self,gg,tomobin2,Nbin1,Nbin2):
-        #gg = GGCorrelation(nbins = 20, min_sep=0.5, max_sep=475.5, sep_units='arcmin',bin_slop=0.01,)
-        gg.process(self.tomobin, tomobin2)
-        gg.write('treecorr_output/cross_correlation_tomo{}_{}'.format(Nbin1,Nbin2))
-    
-    def map2alm(self,a,Nbin):
-        self.kpmap_ring = a.generate_healpix_map()       
-        Cl = anafast(self.kpmap_ring, map2=None, nspec=None, lmax=5000, mmax=None, iter=1, alm=False, pol=False, use_weights=False, datapath=None, gal_cut=0, use_pixel_weights=False)
+class readkappamaps():
+    def __init__(self,dir_name,nshells,seed,nzs,theta,nside):
+        self.nshells = nshells
+        self.seed = seed
+        self.nzs = nzs
+        self.theta=theta
+        self.nside=nside
+        self.filenames = [os.path.join(path, f'shells_z{nshells}_subsampleauto_groupiso/{nzs}/kappa_hacc_nz{tomo}_nside4096_seed{seed}.fits') for tomo in range(1,6)] 
+        a = [healsparse.HealSparseMap.read(l) for l in self.filenames]
+        self.tomobins = [a_.generate_healpix_map() for a_ in a]
+
+class hoscodes(readkappamaps):
+    def __init__(self,dir_name,nshells,seed,nzs,theta,nside,dir_results):
+        super().__init__(dir_name,nshells,seed,nzs,theta,nside)
+        #self.tomobins = tomobins
+        self.Ntomobins = len(self.tomobins)
+        self.dir_results = dir_results
+        if not os.path.exists(self.dir_results):
+            os.makedirs(self.dir_results)
+        #create empty methods (for HOS codes) and fill iterating over tomobins ideally just once! (map sample in the future with openmp)
+        self.map2alm = []
+        self.map3 = []
+        self.PDF = []
+        self.peaks = []
+        self.minima = []
+        self.dss = []
+        
+    def run_all(self):
+        for i,tomo in enumerate(self.tomobins):
+            self.map2alm.append(run_map2alm(tomo,i))
+            self.map3.append(run_map3(tomo,i))
+            PDF,peaks,minima = PDFPeaksMinima(tomo,i)
+            self.PDF.append(PDF)
+            self.peaks.append(peaks)
+            self.minima.append(minima)
+            nap_table,shear_table = run_dss()
+            self.dss = [nap_table,shear_table]
+        
+            
+    def run_map2alm(self,tomo,Ntomo):
+        
+        Cl = anafast(tomo, map2=None, nspec=None, 
+                     lmax=5000, mmax=None, iter=1,
+                     alm=False,pol=False, use_weights=False,
+                     datapath=None, gal_cut=0,use_pixel_weights=False)
         Cl *= 8.0
-        np.savetxt("map2alm_output/Cl_tomo"+np.str(Nbin)+".dat",Cl)
+        fn_out = self.dir_results+'map2alm_tomo%d.dat'%Ntomo
+        return Cl
 
-    def map3(self,a,thetas, nside, fn_out):
-        kappa = a.generate_healpix_map()
-        measureMap3FromKappa(kappa, thetas=thetas, nside=nside, fn_out=fn_out, verbose=False, doPlots=False)
+    def run_map3(self,tomo,Ntomo):
+        fn_out = self.dir_results+'map3_tomo%d.dat'%Ntomo
+        measureMap3FromKappa(tomo, thetas=self.theta, nside=self.nside, fn_out=fn_out, verbose=False, doPlots=False)
+        results_map3 = np.genfromtxt(fn_out)
+        self.map3.append(results_map3)
+        return result_map3
+    
+    def PDFPeaksMinima(self,tomo,Ntomo):
+        kappa_data = tomo
+        #choose kappa bins
+        bins=np.linspace(-0.1-0.001,0.1+0.001,201) 
+        binmids=(bins[1:]+bins[:-1])/2
+
+        #create histograms
+        #counts_smooth,bins=np.histogram(kappa_data_smooth,density=True,bins=bins)
+        counts,bins=np.histogram(kappa_data,density=True,bins=bins)        
         
+        #find the peak positions and amplitudes
+        peak_pos, peak_amp = find_extrema(kappa_data,lonlat=True)
+        #repeat for minima
+        minima_pos, minima_amp = find_extrema(kappa_data,minima=True,lonlat=True)
+        
+        peaks = np.array([peak_pos,peak_amp]).T
+        minima = np.array([minima_pos,minima_amp]).T
+        
+        return counts,peaks,minima
+    
+    def run_DSS(density_contrast_map,pix,shear_table):
+        DSS_class = DSS_fct.DSS_class(filter='top_hat',theta_ap=20,nside=self.nside)
+Nap=DSS_class.calc_Nap(bias=1.5,n0=0.3,density_contrast=density_contrast_map)
+
+        ra,dec=hp.pix2ang(nside=self.nside,ipix=pix,lonlat=True)
+        Nap_table = Table(np.array([ra[0],dec[0],Nap[pix][0]]).T, names=('ra','dec','Nap'))
+        gamma_table = Table(np.array([ra[0],dec[0],-gamma1[0],gamma2[0]]).T, names=('ra','dec','gamma1','gamma2'))
+        shear_table=DSS_class.calc_shear(Nap_table=Nap_table,gamma_table=gamma_table,theta_min=5,theta_max=120,nbins=20,N_quantiles=5)
+        #TODO: Move routines (see notebook) to an independent python file.
+        return Nap_table,shear_table
+    
     def integrated3PCF(self,tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmins,NSIDE,n_g,extension):
         
         g1_Map, g2_Map, w_Map, footprint_Map = read_maps(tomo_Map)
@@ -330,40 +387,6 @@ class hoscodes():
 
         np.savetxt(filepath_output+'/angular_separations_arcmin.dat', theta.T)
        #### TODO: move all routines (see notebooks) to independent python file
-        
-
-        def PDFPeaksMinima(self,a,load = True):
-        kappa = a.generate_healpix_map()
-        sl_arcmin=10.25 #define the smoothing length for the map in arcmins
-        sl_rad = sl_arcmin/60/180*np.pi #convert sl_arcmin to radians 
-        if not load:
-            kappa_masked_smooth = hp.smoothing(kappa_masked,sigma = sl_rad) 
-            #smooth map with a Gaussian filter with std = sl_rad
-            #save the smoothed map so we don't have to do this everytime we start the notebook
-            hp.write_map("./smoothed_map.fits",kappa_masked_smooth)
-        kappa_data_smooth = kappa_masked_smooth.data[kappa_masked_smooth.mask==False]
-        kappa_data = kappa_masked.data[kappa_masked.mask==False]
-
-        #choose kappa bins
-        bins=np.linspace(-0.1-0.001,0.1+0.001,201) 
-        binmids=(bins[1:]+bins[:-1])/2
-
-        #create histograms
-        counts_smooth,bins=np.histogram(kappa_data_smooth,density=True,bins=bins)
-        counts,bins=np.histogram(kappa_data,density=True,bins=bins)
-        self.pdfcounts = counts
-        self.pdfcounts_smooth = counts_smooth
-        self.kappabins = bins
-        
-        
-        #find the peak positions and amplitudes
-        peak_pos, peak_amp = find_extrema(kappa_masked_smooth,lonlat=True)
-        #repeat for minima
-        minima_pos, minima_amp = find_extrema(kappa_masked_smooth,minima=True,lonlat=True)
-        self.peakpos = peak_pos
-        self.minimapos = minima_pos
-
-        #TODO: Move routines (see notebook) to an independent python file.
 
 
         
