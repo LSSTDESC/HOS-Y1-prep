@@ -3,34 +3,47 @@ import healpy as hp
 import healsparse
 from healpy.sphtfunc import anafast
 import os,sys
+
 sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/Map3/')#replace with __init__.py
 sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/PDF_Peaks_Minima/')#replace with __init__.py
-sys.path.append('/global/homes/j/jatorres/DSS_clean/')#replace with __init__.py
+sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/DSS_clean/')#replace with __init__.py
 from aperture_mass_computer import measureMap3FromKappa
 from Peaks_minima import find_extrema
-from DSS_functions import DSS_fct
+from DSS_functions import DSS_class
 
-        
-class readkappamaps():
-    def __init__(self,dir_name,nshells,seed,nzs,theta,nside):
+nside_c = 32
+
+class kappamaps():
+    """
+    Class for reading maps (kappa) and store the relevant information
+    parameters:
+        nshells: Number of shells.
+        seed: Seed from 0 to 3.
+        nzs: Value is 'kappa_zsnapshots'.
+        nside: Nside of map.
+    """
+    def __init__(self,filenames,nshells,seed,nzs,nside):
         self.nshells = nshells
         self.seed = seed
         self.nzs = nzs
-        self.theta=theta
+        #self.theta=theta
         self.nside=nside
-        self.filenames = [os.path.join(path, f'shells_z{nshells}_subsampleauto_groupiso/{nzs}/kappa_hacc_nz{tomo}_nside4096_seed{seed}.fits') for tomo in range(1,6)] 
+        self.filenames = filenames
+        
+    def readmaps(self):
         a = [healsparse.HealSparseMap.read(l) for l in self.filenames]
-        self.tomobins = [a_.generate_healpix_map() for a_ in a]
+        self.mapbins=[a_.generate_healpix_map() for a_ in a]
+        #return [a_.generate_healpix_map() for a_ in a]
 
-class hoscodes(readkappamaps):
-    def __init__(self,dir_name,nshells,seed,nzs,theta,nside,dir_results):
-        super().__init__(dir_name,nshells,seed,nzs,theta,nside)
-        #self.tomobins = tomobins
-        self.Ntomobins = len(self.tomobins)
-        self.dir_results = dir_results
+class hoscodes(kappamaps):#readkappamaps):
+    def __init__(self,filenames,nshells,seed,nzs,nside):
+        super().__init__(filenames,nshells,seed,nzs,nside)
+        self.Nbins = len(filenames)
+        self.dir_results = os.path.join(os.getcwd(),'results/')
         if not os.path.exists(self.dir_results):
             os.makedirs(self.dir_results)
-        #create empty methods (for HOS codes) and fill iterating over tomobins ideally just once! (map sample in the future with openmp)
+        os.getcwd(),
+        #Create empty instances to save statistics
         self.map2alm = []
         self.map3 = []
         self.PDF = []
@@ -38,17 +51,16 @@ class hoscodes(readkappamaps):
         self.minima = []
         self.dss = []
         
-    def run_all(self):
-        for i,tomo in enumerate(self.tomobins):
+    def run_all_tomobins(self):
+        for i,tomo in enumerate(self.mapbins):
             self.map2alm.append(run_map2alm(tomo,i))
             self.map3.append(run_map3(tomo,i))
             PDF,peaks,minima = PDFPeaksMinima(tomo,i)
             self.PDF.append(PDF)
             self.peaks.append(peaks)
             self.minima.append(minima)
-            nap_table,shear_table = run_dss()
-            self.dss = [nap_table,shear_table]
-        
+            #nap_table,shear_table = run_dss()
+            #self.dss = [nap_table,shear_table]
             
     def run_map2alm(self,tomo,Ntomo):
         
@@ -58,17 +70,20 @@ class hoscodes(readkappamaps):
                      datapath=None, gal_cut=0,use_pixel_weights=False)
         Cl *= 8.0
         fn_out = self.dir_results+'map2alm_tomo%d.dat'%Ntomo
+        np.savetxt(fn_out,Cl)
         return Cl
 
-    def run_map3(self,tomo,Ntomo):
+    def run_map3(self,tomo,Ntomo,theta):
+        self.theta = theta
         fn_out = self.dir_results+'map3_tomo%d.dat'%Ntomo
-        measureMap3FromKappa(tomo, thetas=self.theta, nside=self.nside, fn_out=fn_out, verbose=False, doPlots=False)
-        results_map3 = np.genfromtxt(fn_out)
-        self.map3.append(results_map3)
-        return result_map3
+        measureMap3FromKappa(tomo, thetas=theta, nside=self.nside, fn_out=fn_out, verbose=False, doPlots=False)
+        results_map3 = np.loadtxt(fn_out)
+        #self.map3.append(results_map3)
+        return results_map3
     
     def PDFPeaksMinima(self,tomo,Ntomo):
-        kappa_data = tomo
+        kappa_masked = hp.ma(tomo)
+        kappa_data = kappa_masked.data[kappa_masked.mask==False]
         #choose kappa bins
         bins=np.linspace(-0.1-0.001,0.1+0.001,201) 
         binmids=(bins[1:]+bins[:-1])/2
@@ -88,11 +103,11 @@ class hoscodes(readkappamaps):
         return counts,peaks,minima
     
     def run_DSS(density_contrast_map,pix,shear_table):
-        DSS_class = DSS_fct.DSS_class(filter='top_hat',theta_ap=20,nside=self.nside)
-Nap=DSS_class.calc_Nap(bias=1.5,n0=0.3,density_contrast=density_contrast_map)
+        DSS_class = DSS_class(filter='top_hat',theta_ap=20,nside=self.nside)
+        Nap=DSS_class.calc_Nap(bias=1.5,n0=0.3,density_contrast=density_contrast_map)
 
-        ra,dec=hp.pix2ang(nside=self.nside,ipix=pix,lonlat=True)
-        Nap_table = Table(np.array([ra[0],dec[0],Nap[pix][0]]).T, names=('ra','dec','Nap'))
+        ra,dec=hp.pix2ang(nside=nside,ipix=pix,lonlat=True)
+        Nap_table = Table(np.array([ra[0],dec[0],Nap[pix]]).T, names=('ra','dec','Nap'))
         gamma_table = Table(np.array([ra[0],dec[0],-gamma1[0],gamma2[0]]).T, names=('ra','dec','gamma1','gamma2'))
         shear_table=DSS_class.calc_shear(Nap_table=Nap_table,gamma_table=gamma_table,theta_min=5,theta_max=120,nbins=20,N_quantiles=5)
         #TODO: Move routines (see notebook) to an independent python file.
