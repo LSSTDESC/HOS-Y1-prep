@@ -2,6 +2,7 @@ import numpy as np
 import healpy as hp
 import healsparse
 from healpy.sphtfunc import anafast
+from healpy.pixelfunc import ud_grade
 import os,sys
 
 sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/Map3/')#replace with __init__.py
@@ -29,20 +30,30 @@ class kappamaps():
         #self.theta=theta
         self.nside=nside
         self.filenames = filenames
+        self.Nbins = len(self.filenames)
         
-    def readmaps(self):
+    def readmaps_fits(self):
         a = [healsparse.HealSparseMap.read(l) for l in self.filenames]
         self.mapbins=[a_.generate_healpix_map() for a_ in a]
         #return [a_.generate_healpix_map() for a_ in a]
+        
+    def readmaps_healpy(self):
+        self.mapbins = [hp.read_map(l) for l in self.filenames]
+        
+    def smoothing_maps(self,kappa_map,sl):
+        sl_rad = sl/60/180*np.pi
+        kappa_masked = hp.ma(kappa_map)
+        smoothed_mapbins = hp.smoothing(kappa_masked,sigma = sl_rad) #smooth map with a Gaussian filter with std = sl_rad    
+        return smoothed_mapbins
+        #save the smoothed map so we don't have to do this everytime we start the notebook
 
-class hoscodes(kappamaps):#readkappamaps):
-    def __init__(self,filenames,nshells,seed,nzs,nside):
-        super().__init__(filenames,nshells,seed,nzs,nside)
-        self.Nbins = len(filenames)
+class hoscodes():#readkappamaps):
+    def __init__(self,kappamaps):
+        #super().__init__(filenames,nshells,seed,nzs,nside)
+        self.Nbins = len(kappamaps.filenames)
         self.dir_results = os.path.join(os.getcwd(),'results/')
         if not os.path.exists(self.dir_results):
             os.makedirs(self.dir_results)
-        os.getcwd(),
         #Create empty instances to save statistics
         self.map2alm = []
         self.map3 = []
@@ -50,18 +61,8 @@ class hoscodes(kappamaps):#readkappamaps):
         self.peaks = []
         self.minima = []
         self.dss = []
-        
-    def run_all_tomobins(self):
-        for i,tomo in enumerate(self.mapbins):
-            self.map2alm.append(run_map2alm(tomo,i))
-            self.map3.append(run_map3(tomo,i))
-            PDF,peaks,minima = PDFPeaksMinima(tomo,i)
-            self.PDF.append(PDF)
-            self.peaks.append(peaks)
-            self.minima.append(minima)
-            #nap_table,shear_table = run_dss()
-            #self.dss = [nap_table,shear_table]
-            
+        self.I3PCF = []
+
     def run_map2alm(self,tomo,Ntomo):
         
         Cl = anafast(tomo, map2=None, nspec=None, 
@@ -69,38 +70,51 @@ class hoscodes(kappamaps):#readkappamaps):
                      alm=False,pol=False, use_weights=False,
                      datapath=None, gal_cut=0,use_pixel_weights=False)
         Cl *= 8.0
-        fn_out = self.dir_results+'map2alm_tomo%d.dat'%Ntomo
+        fn_header = kappamaps.filename[Ntomo].split('/')[-1]
+        fn_out = self.dir_results+fn_header.split('.')[0]+'_map2_Cell_ell_0_5000.dat'
         np.savetxt(fn_out,Cl)
         return Cl
 
-    def run_map3(self,tomo,Ntomo,theta):
-        self.theta = theta
-        fn_out = self.dir_results+'map3_tomo%d.dat'%Ntomo
-        measureMap3FromKappa(tomo, thetas=theta, nside=self.nside, fn_out=fn_out, verbose=False, doPlots=False)
+    def run_map3(self,tomo,Ntomo,nside,thetas):
+        fn_header = kappamaps.filename[Ntomo].split('/')[-1]
+        fn_out = self.dir_results+fn_header.split('.') + '_map3_DV_thetas.dat'
+        measureMap3FromKappa(tomo, thetas=thetas, nside=nside, fn_out=fn_out, verbose=False, doPlots=False)
         results_map3 = np.loadtxt(fn_out)
         #self.map3.append(results_map3)
         return results_map3
     
-    def PDFPeaksMinima(self,tomo,Ntomo):
-        kappa_masked = hp.ma(tomo)
-        kappa_data = kappa_masked.data[kappa_masked.mask==False]
-        #choose kappa bins
+    def run_PDFPeaksMinima(self,tomo_smooth,Ntomo):
+    
+        kappa_data_smooth = tomo_smooth.data[tomo_smooth.mask==False]
+        #kappa_data = kappa_masked.data[kappa_masked.mask==False]
+
         bins=np.linspace(-0.1-0.001,0.1+0.001,201) 
         binmids=(bins[1:]+bins[:-1])/2
 
         #create histograms
         #counts_smooth,bins=np.histogram(kappa_data_smooth,density=True,bins=bins)
-        counts,bins=np.histogram(kappa_data,density=True,bins=bins)        
+        
+        counts_smooth,bins=np.histogram(kappa_data_smooth,density=True,bins=bins)
+        #counts,bins=np.histogram(kappa_data,density=True,bins=bins)
         
         #find the peak positions and amplitudes
-        peak_pos, peak_amp = find_extrema(kappa_data,lonlat=True)
+        peak_pos, peak_amp = find_extrema(tomo_smooth,lonlat=True)
         #repeat for minima
-        minima_pos, minima_amp = find_extrema(kappa_data,minima=True,lonlat=True)
+        minima_pos, minima_amp = find_extrema(tomo_smooth,minima=True,lonlat=True)
         
-        peaks = np.array([peak_pos,peak_amp]).T
-        minima = np.array([minima_pos,minima_amp]).T
+        peaks = np.vstack([peak_pos.T,peak_amp]).T
+        minima = np.vstack([minima_pos.T,minima_amp]).T
         
-        return counts,peaks,minima
+        fn_header = kappamaps.filename[Ntomo].split('/')[-1]
+        fn_out_counts = self.dir_results+fn_header.split('.')[0]+'_Counts_kappa_width0.1_200Kappabins.dat'
+        fn_out_minima = self.dir_results+fn_header.split('.')[0]+'_minima_posRADEC_amp.dat'
+        fn_out_peaks = self.dir_results+fn_header.split('.')[0]+'_maxima_posRADEC_amp.dat'
+        
+        np.savetxt(fn_out_counts,counts_smooth)
+        np.savetxt(fn_out_minima,minima)
+        np.savetxt(fn_out_peaks,peaks)
+        
+        return counts_smooth,peaks,minima
     
     def run_DSS(density_contrast_map,pix,shear_table):
         DSS_class = DSS_class(filter='top_hat',theta_ap=20,nside=self.nside)
