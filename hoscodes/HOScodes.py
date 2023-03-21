@@ -47,10 +47,10 @@ class kappamaps():
         return smoothed_mapbins
         #save the smoothed map so we don't have to do this everytime we start the notebook
 
-class hoscodes():#readkappamaps):
-    def __init__(self,kappamaps):
-        #super().__init__(filenames,nshells,seed,nzs,nside)
-        self.Nbins = len(kappamaps.filenames)
+class hoscodes(kappamaps):
+    def __init__(self,filenames,nshells,seed,nzs,nside):
+        super().__init__(filenames,nshells,seed,nzs,nside)
+        self.Nbins = len(self.filenames)
         self.dir_results = os.path.join(os.getcwd(),'results/')
         if not os.path.exists(self.dir_results):
             os.makedirs(self.dir_results)
@@ -70,14 +70,14 @@ class hoscodes():#readkappamaps):
                      alm=False,pol=False, use_weights=False,
                      datapath=None, gal_cut=0,use_pixel_weights=False)
         Cl *= 8.0
-        fn_header = kappamaps.filename[Ntomo].split('/')[-1]
+        fn_header = self.filenames[Ntomo].split('/')[-1]
         fn_out = self.dir_results+fn_header.split('.')[0]+'_map2_Cell_ell_0_5000.dat'
         np.savetxt(fn_out,Cl)
         return Cl
 
     def run_map3(self,tomo,Ntomo,nside,thetas):
-        fn_header = kappamaps.filename[Ntomo].split('/')[-1]
-        fn_out = self.dir_results+fn_header.split('.') + '_map3_DV_thetas.dat'
+        fn_header = self.filenames[Ntomo].split('/')[-1]
+        fn_out = self.dir_results+fn_header.split('.')[0] + '_map3_DV_thetas.dat'
         measureMap3FromKappa(tomo, thetas=thetas, nside=nside, fn_out=fn_out, verbose=False, doPlots=False)
         results_map3 = np.loadtxt(fn_out)
         #self.map3.append(results_map3)
@@ -105,7 +105,7 @@ class hoscodes():#readkappamaps):
         peaks = np.vstack([peak_pos.T,peak_amp]).T
         minima = np.vstack([minima_pos.T,minima_amp]).T
         
-        fn_header = kappamaps.filename[Ntomo].split('/')[-1]
+        fn_header = self.filenames[Ntomo].split('/')[-1]
         fn_out_counts = self.dir_results+fn_header.split('.')[0]+'_Counts_kappa_width0.1_200Kappabins.dat'
         fn_out_minima = self.dir_results+fn_header.split('.')[0]+'_minima_posRADEC_amp.dat'
         fn_out_peaks = self.dir_results+fn_header.split('.')[0]+'_maxima_posRADEC_amp.dat'
