@@ -40,10 +40,14 @@ class kappamaps():
     def readmaps_healpy(self):
         self.mapbins = [hp.read_map(l) for l in self.filenames]
         
+    def readmaps_smoothed(self,sl):#Map should exist!!
+        self.smoothed_mapbins = [hp.read_map(l) for l in self.filenames]
+        self.smoothinglength = sl
+        
     def smoothing_maps(self,kappa_map,sl):
         sl_rad = sl/60/180*np.pi
         kappa_masked = hp.ma(kappa_map)
-        smoothed_mapbins = hp.smoothing(kappa_masked,sigma = sl_rad) #smooth map with a Gaussian filter with std = sl_rad    
+        smoothed_mapbins = hp.smoothing(kappa_masked,sigma = sl_rad) #smooth map with a Gaussian filter with std = sl_rad 
         return smoothed_mapbins
         #save the smoothed map so we don't have to do this everytime we start the notebook
 
@@ -71,13 +75,13 @@ class hoscodes(kappamaps):
                      datapath=None, gal_cut=0,use_pixel_weights=False)
         Cl *= 8.0
         fn_header = self.filenames[Ntomo].split('/')[-1]
-        fn_out = self.dir_results+fn_header.split('.')[0]+'_map2_Cell_ell_0_5000.dat'
+        fn_out = self.dir_results+fn_header.split('.')[0]+'_nshell%d_map2_Cell_ell_0_5000.dat'%self.nshells
         np.savetxt(fn_out,Cl)
         return Cl
 
     def run_map3(self,tomo,Ntomo,nside,thetas):
         fn_header = self.filenames[Ntomo].split('/')[-1]
-        fn_out = self.dir_results+fn_header.split('.')[0] + '_map3_DV_thetas.dat'
+        fn_out = self.dir_results+fn_header.split('.')[0] + '_nshell%d_map3_DV_thetas.dat'%self.nshells
         measureMap3FromKappa(tomo, thetas=thetas, nside=nside, fn_out=fn_out, verbose=False, doPlots=False)
         results_map3 = np.loadtxt(fn_out)
         #self.map3.append(results_map3)
@@ -106,9 +110,9 @@ class hoscodes(kappamaps):
         minima = np.vstack([minima_pos.T,minima_amp]).T
         
         fn_header = self.filenames[Ntomo].split('/')[-1]
-        fn_out_counts = self.dir_results+fn_header.split('.')[0]+'_Counts_kappa_width0.1_200Kappabins.dat'
-        fn_out_minima = self.dir_results+fn_header.split('.')[0]+'_minima_posRADEC_amp.dat'
-        fn_out_peaks = self.dir_results+fn_header.split('.')[0]+'_maxima_posRADEC_amp.dat'
+        fn_out_counts = self.dir_results+fn_header.split('.')[0]+'_nshell%d_Counts_kappa_width0.1_200Kappabins.dat'%self.nshells
+        fn_out_minima = self.dir_results+fn_header.split('.')[0]+'_nshell%d_minima_posRADEC_amp.dat'%self.nshells
+        fn_out_peaks = self.dir_results+fn_header.split('.')[0]+'_nshell%d_peaks_posRADEC_amp.dat'%self.nshells
         
         np.savetxt(fn_out_counts,counts_smooth)
         np.savetxt(fn_out_minima,minima)
