@@ -1,0 +1,20 @@
+This folder contains theory predictions for <Map³>.
+Author: Laila Linke, laila.linke@uibk.ac.at
+
+They were computed using the threepoint code (Heydenreich et al, 2023,;Linke et al. 2022)
+https://github.com/sheydenreich/threepoint
+This model is based on the bihalofit-Bispectrum, so accuracies of ~10% are expected.
+
+The cosmology used was
+h 0.71
+sigma_8 0.801
+Omega_b 0.0448
+n_s 0.963
+w -1
+Omega_m 0.2648
+
+The files are ASCII with the format
+Column 1: First aperture radius [arcmin]
+Column 2: Second aperture radius [arcmin]
+Column 3: Third aperture radius [arcmin]
+Column 4: <Map³>(theta1, theta2, theta3) [unitless]
