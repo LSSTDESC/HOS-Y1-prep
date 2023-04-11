@@ -1,0 +1,6 @@
+# This folder contains predictions obtained from the cosmoSIS package, 
+# assuming the cosmology of the OuterRim simulations and the Stage-IV lensing survey 
+# n(z) of Harnois-Deraps+2021. See the file values.txt for details.
+#
+# The files bin_<i>_<j>.txt contain the lensing spectra C^kappa_ell computed between shells <i> and <j>.
+# The ell multipoles are provided in the file ell.txt 
