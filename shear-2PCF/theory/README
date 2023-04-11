@@ -2,5 +2,5 @@
 # assuming the cosmology of the OuterRim simulations and the Stage-IV lensing survey 
 # n(z) of Harnois-Deraps+2021. See the file values.txt for details.
 #
-# The files bin_<i>_<j>.txt contain the lensing spectra C^kappa_ell computed between tomographic bins <i> and <j>.
-# The ell multipoles are provided in the file ell.txt 
+# The files bin_<i>_<j>.txt contain the lensing 2-point correlation functions xip and xim computed between tomographuc bins <i> and <j>.
+# The angular separations are in radians, provided in the file theta.txt 
