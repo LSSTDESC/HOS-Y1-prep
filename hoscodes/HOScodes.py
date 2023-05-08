@@ -6,13 +6,13 @@ from healpy.pixelfunc import ud_grade
 import os,sys
 
 sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/Map3/')#replace with __init__.py
-sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/PDF_Peaks_Minima/')#replace with __init__.py
-sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/DSS_clean/')#replace with __init__.py
+sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/PDF_Peaks_Minima/')
+sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/DSS_clean/')
 from aperture_mass_computer import measureMap3FromKappa
 from Peaks_minima import find_extrema
 from DSS_functions import DSS_class
 
-nside_c = 32
+#nside_c = 32
 
 class kappamaps():
     """
@@ -119,16 +119,26 @@ class hoscodes(kappamaps):
         np.savetxt(fn_out_peaks,peaks)
         
         return counts_smooth,peaks,minima
-    
-    def run_DSS(density_contrast_map,pix,shear_table):
-        DSS_class = DSS_class(filter='top_hat',theta_ap=20,nside=self.nside)
-        Nap=DSS_class.calc_Nap(bias=1.5,n0=0.3,density_contrast=density_contrast_map)
 
+    
+class gammaMaps():
+    def init(self,filenames,nshells,seed,nzs,nside):
+        self.nshells = nshells
+        self.seed = seed
+        self.nzs = nzs
+        self.nside=nside
+        self.filenames = filenames
+        self.Nbins = len(self.filenames)
+        
+    def run_DSS(density_contrast_map,shear_table,pix,gamma1,gamm2,load_prepared_data = False):
+
+        DSS_class = DSS_fct.DSS_class(filter='top_hat',theta_ap=20,nside=nside)
+        Nap=DSS_class.calc_Nap(bias=1.5,n0=0.3,density_contrast=density_contrast)
         ra,dec=hp.pix2ang(nside=nside,ipix=pix,lonlat=True)
-        Nap_table = Table(np.array([ra[0],dec[0],Nap[pix]]).T, names=('ra','dec','Nap'))
+        Nap_table = Table(np.array([ra[0],dec[0],Nap[pix][0]]).T, names=('ra','dec','Nap'))
         gamma_table = Table(np.array([ra[0],dec[0],-gamma1[0],gamma2[0]]).T, names=('ra','dec','gamma1','gamma2'))
         shear_table=DSS_class.calc_shear(Nap_table=Nap_table,gamma_table=gamma_table,theta_min=5,theta_max=120,nbins=20,N_quantiles=5)
-        #TODO: Move routines (see notebook) to an independent python file.
+        
         return Nap_table,shear_table
     
     def integrated3PCF(self,tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmins,NSIDE,n_g,extension):
