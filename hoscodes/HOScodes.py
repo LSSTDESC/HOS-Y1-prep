@@ -18,101 +18,110 @@ class kappamaps():
     """
     Class for reading maps (kappa) and store the relevant information
     parameters:
-        nshells: Number of shells.
-        seed: Seed from 0 to 3.
-        nzs: Value is 'kappa_zsnapshots'.
         nside: Nside of map.
     """
-    def __init__(self,filenames,nshells,seed,nzs,nside):
-        self.nshells = nshells
-        self.seed = seed
-        self.nzs = nzs
-        #self.theta=theta
+    def __init__(self,filenames,nside):
         self.nside=nside
         self.filenames = filenames
-        self.Nbins = len(self.filenames)
+        self.mapbins = []
         
-    def readmaps_fits(self):
-        a = [healsparse.HealSparseMap.read(l) for l in self.filenames]
-        self.mapbins=[a_.generate_healpix_map() for a_ in a]
-        #return [a_.generate_healpix_map() for a_ in a]
-        
+#    def readmaps_fits(self,nside_c=32):
+#        self.nside_c = nside_c
+#        a = [healsparse.HealSparseMap.read(l,nside_coverage=32) for l in self.filenames]
+#        self.mapbins=[a_.generate_healpix_map() for a_ in a]
+    def readmaps_npy(self):
+        self.mapbins = [np.load(l) for l in self.filenames]        
     def readmaps_healpy(self):
         self.mapbins = [hp.read_map(l) for l in self.filenames]
         
-    def readmaps_smoothed(self,sl):#Map should exist!!
-        self.smoothed_mapbins = [hp.read_map(l) for l in self.filenames]
-        self.smoothinglength = sl
+    def smoothing(self,mapbin,sl,is_map=True):
+        """
+        map smoothing in healpy applied to self.mapbins in class.
+        -----------
+        parameters:
+        sl: smoothing lenght in arcmins.
         
-    def smoothing_maps(self,kappa_map,sl):
+        """
+        
+        if is_map:
+            kappa_map = mapbin
+        else:
+            kappa_map = self.mapbins[mapbin]
         sl_rad = sl/60/180*np.pi
         kappa_masked = hp.ma(kappa_map)
-        smoothed_mapbins = hp.smoothing(kappa_masked,sigma = sl_rad) #smooth map with a Gaussian filter with std = sl_rad 
-        return smoothed_mapbins
+        return hp.smoothing(kappa_masked,sigma = sl_rad) #smooth map with a Gaussian filter with std = sl_rad 
+#        return smoothed_mapbins
         #save the smoothed map so we don't have to do this everytime we start the notebook
 
-class hoscodes(kappamaps):
-    def __init__(self,filenames,nshells,seed,nzs,nside):
-        super().__init__(filenames,nshells,seed,nzs,nside)
-        self.Nbins = len(self.filenames)
-        self.dir_results = os.path.join(os.getcwd(),'results/')
+class kappacodes(kappamaps):
+    def __init__(self,dir_results,filenames,nside):
+        super().__init__(filenames,nside)
+        self.Nmaps = len(self.filenames)
+        self.dir_results = dir_results#os.path.join(os.getcwd())
         if not os.path.exists(self.dir_results):
             os.makedirs(self.dir_results)
-        #Create empty instances to save statistics
-        self.map2alm = []
-        self.map3 = []
-        self.PDF = []
-        self.peaks = []
-        self.minima = []
-        self.dss = []
-        self.I3PCF = []
 
-    def run_map2alm(self,tomo,Ntomo):
+    def run_map2alm(self,Nmap1,Nmap2=None,is_cross=False):
+        if is_cross:
+            map1 = self.mapbins[Nmap1]
+            map2 = self.mapbins[Nmap2]
+            Cl = anafast(map1=map1, map2=map2, nspec=None, 
+             lmax=5000, mmax=None, iter=1,
+             alm=False,pol=False, use_weights=False,
+             datapath=None, gal_cut=0,use_pixel_weights=False)
+            Cl *= 8.0
+            fn_header = self.filenames[Nmap1].split('/')[-1]
+            fn_out = self.dir_results+'map2/'+fn_header.split('.')[0]+'_Nmap%d_%d_map2_Cell_ell_0_5000.dat'%(Nmap1+1,Nmap2+1)
+            np.savetxt(fn_out,Cl)
         
-        Cl = anafast(tomo, map2=None, nspec=None, 
-                     lmax=5000, mmax=None, iter=1,
-                     alm=False,pol=False, use_weights=False,
-                     datapath=None, gal_cut=0,use_pixel_weights=False)
-        Cl *= 8.0
-        fn_header = self.filenames[Ntomo].split('/')[-1]
-        fn_out = self.dir_results+fn_header.split('.')[0]+'_nshell%d_map2_Cell_ell_0_5000.dat'%self.nshells
-        np.savetxt(fn_out,Cl)
+        
+        else:
+            map1 = self.mapbins[Nmap1]
+            Cl = anafast(map1, map2=None, nspec=None, 
+                         lmax=5000, mmax=None, iter=1,
+                         alm=False,pol=False, use_weights=False,
+                         datapath=None, gal_cut=0,use_pixel_weights=False)
+            Cl *= 8.0
+            fn_header = self.filenames[Nmap1].split('/')[-1]
+            fn_out = self.dir_results+'map2/'+fn_header.split('.')[0]+'_Nmap%d_map2_Cell_ell_0_5000.dat'%(Nmap1+1)
+            np.savetxt(fn_out,Cl)
+        
         return Cl
 
-    def run_map3(self,tomo,Ntomo,nside,thetas):
-        fn_header = self.filenames[Ntomo].split('/')[-1]
-        fn_out = self.dir_results+fn_header.split('.')[0] + '_nshell%d_map3_DV_thetas.dat'%self.nshells
-        measureMap3FromKappa(tomo, thetas=thetas, nside=nside, fn_out=fn_out, verbose=False, doPlots=False)
+    def run_map3(self,Nmap1,thetas,is_cross=False):
+        fn_header = self.filenames[Nmap1].split('/')[-1]
+        fn_out = self.dir_results+'map3/'+fn_header.split('.')[0] + '_map3_DV_thetas.dat'
+        measureMap3FromKappa(self.mapbins[Nmap1], thetas=thetas, nside=self.nside, fn_out=fn_out, verbose=False, doPlots=False)
         results_map3 = np.loadtxt(fn_out)
         #self.map3.append(results_map3)
         return results_map3
     
-    def run_PDFPeaksMinima(self,tomo_smooth,Ntomo):
-    
-        kappa_data_smooth = tomo_smooth.data[tomo_smooth.mask==False]
-        #kappa_data = kappa_masked.data[kappa_masked.mask==False]
+    def run_PDFPeaksMinima(self,map1_smooth,Nmap1,map2_smooth=None,Nmap2=None,is_cross=False):
+        
+        if is_cross:
+            map1_smooth = np.append(map1_smooth,map2_smooth,axis=0)
 
         bins=np.linspace(-0.1-0.001,0.1+0.001,201) 
         binmids=(bins[1:]+bins[:-1])/2
 
         #create histograms
-        #counts_smooth,bins=np.histogram(kappa_data_smooth,density=True,bins=bins)
         
-        counts_smooth,bins=np.histogram(kappa_data_smooth,density=True,bins=bins)
+        counts_smooth,bins=np.histogram(map1_smooth,density=True,bins=bins)
         #counts,bins=np.histogram(kappa_data,density=True,bins=bins)
         
         #find the peak positions and amplitudes
-        peak_pos, peak_amp = find_extrema(tomo_smooth,lonlat=True)
+        map1_smooth_ma = hp.ma(map1_smooth)
+        peak_pos, peak_amp = find_extrema(map1_smooth_ma,lonlat=True)
         #repeat for minima
-        minima_pos, minima_amp = find_extrema(tomo_smooth,minima=True,lonlat=True)
+        minima_pos, minima_amp = find_extrema(map1_smooth_ma,minima=True,lonlat=True)
         
         peaks = np.vstack([peak_pos.T,peak_amp]).T
         minima = np.vstack([minima_pos.T,minima_amp]).T
         
-        fn_header = self.filenames[Ntomo].split('/')[-1]
-        fn_out_counts = self.dir_results+fn_header.split('.')[0]+'_nshell%d_Counts_kappa_width0.1_200Kappabins.dat'%self.nshells
-        fn_out_minima = self.dir_results+fn_header.split('.')[0]+'_nshell%d_minima_posRADEC_amp.dat'%self.nshells
-        fn_out_peaks = self.dir_results+fn_header.split('.')[0]+'_nshell%d_peaks_posRADEC_amp.dat'%self.nshells
+        fn_header = self.filenames[Nmap1].split('/')[-1]
+        fn_out_counts = self.dir_results+'PDF/'+fn_header.split('.')[0]+'_Nmap%d_Counts_kappa_width0.1_200Kappabins.dat'%(Nmap1+1)
+        fn_out_minima = self.dir_results+'peaks/'+fn_header.split('.')[0]+'_Nmap%d_minima_posRADEC_amp.dat'%(Nmap1+1)
+        fn_out_peaks = self.dir_results+'minima/'+fn_header.split('.')[0]+'_Nmap%d_peaks_posRADEC_amp.dat'%(Nmap1+1)
         
         np.savetxt(fn_out_counts,counts_smooth)
         np.savetxt(fn_out_minima,minima)
@@ -123,9 +132,6 @@ class hoscodes(kappamaps):
     
 class gammaMaps():
     def init(self,filenames,nshells,seed,nzs,nside):
-        self.nshells = nshells
-        self.seed = seed
-        self.nzs = nzs
         self.nside=nside
         self.filenames = filenames
         self.Nbins = len(self.filenames)
@@ -141,7 +147,7 @@ class gammaMaps():
         
         return Nap_table,shear_table
     
-    def integrated3PCF(self,tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmins,NSIDE,n_g,extension):
+    def run_integrated3PCF(self,tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmins,NSIDE,n_g,extension):
         
         g1_Map, g2_Map, w_Map, footprint_Map = read_maps(tomo_Map)
         g1_xiA, g2_xiA, w_xiA, footprint_xiA = read_maps(tomo_xiA)
