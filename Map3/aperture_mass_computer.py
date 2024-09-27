@@ -13,6 +13,81 @@ from multiprocessing import Pool
 from tqdm import tqdm
 import healpy as hp
 
+def measureMap3FromKappa_crossbins(kappa1, kappa2, kappa3, thetas=[4,8,16,32], nside=2048, verbose=False, doPlots=False, fn_out=""):
+    """ Measure tomographic <Map3> from three convergence maps, given as Healpy maps
+
+    Args:
+        kappa1 (Healpy map): Convergence kappa of redshift z1. Important: Masked value need to be set to healpy.pixelfunc.UNSEEN
+        kappa2 (Healpy map): Convergence kappa of redshift z2. Important: Masked value need to be set to healpy.pixelfunc.UNSEEN
+        kappa3 (Healpy map): Convergence kappa of redshift z3. Important: Masked value need to be set to healpy.pixelfunc.UNSEEN
+        thetas (list, optional): List of aperture scale radii in arcmin. Defaults to [4,8,16,32].
+        nside (int, optional): Wished nside for convergence and aperture mass maps. Kappa maps are degraded to this value. Defaults to 2048.
+        verbose (bool, optional): To switch on verbose mode. Defaults to False.
+        doPlots (bool, optional): To switch on intermediate plot creation. Only makes sense when using this function inside a jupyter notebook. Defaults to False.
+        fn_out (str, optional): Outputfilename for <Map3>. Defaults to "", in which case no output is made.
+    """
+
+    Nthetas=len(thetas) # Number of aperture radii
+
+    # Downgrade kappa map to specified nside
+    if(verbose):
+        print(f"Downgrading kappa1 map from nside={hp.pixelfunc.get_nside(kappa1)} to nside={nside}")
+    kappa1=hp.ud_grade(kappa1, nside)
+    if(verbose):
+        print(f"Downgrading kappa2 map from nside={hp.pixelfunc.get_nside(kappa2)} to nside={nside}")
+    kappa2=hp.ud_grade(kappa2, nside)
+    if(verbose):
+        print(f"Downgrading kappa3 map from nside={hp.pixelfunc.get_nside(kappa3)} to nside={nside}")
+    kappa3=hp.ud_grade(kappa3, nside)
+
+
+    # Set mask
+    mask1=np.where(kappa1!=hp.pixelfunc.UNSEEN)
+    mask2=np.where(kappa2!=hp.pixelfunc.UNSEEN)
+    mask3=np.where(kappa3!=hp.pixelfunc.UNSEEN)
+    
+    # Calculate aperture mass maps
+    Maps_z1=[] # list that will contain aperture mass maps of zbin1
+    Maps_z2=[] # list that will contain aperture mass maps of zbin2
+    Maps_z3=[] # list that will contain aperture mass maps of zbin3
+    for i,theta in enumerate(thetas):
+        if verbose:
+            print(f"Calculating aperture mass map for theta {theta}, ({i+1}/{Nthetas})")
+        ac=aperture_mass_computer_curved_sky(nside, theta) # Calculation object for aperture mass map calculation
+        map_z1=ac.Map_fft_from_kappa(kappa1) # Calculate aperture mass map with FFT for zbin1
+        map_z2=ac.Map_fft_from_kappa(kappa2) # Calculate aperture mass map with FFT for zbin1
+        map_z3=ac.Map_fft_from_kappa(kappa3) # Calculate aperture mass map with FFT for zbin1
+        if doPlots:
+            hp.mollview(map_z1, title=r"$M_\mathrm{ap}$ for $\theta$="+f"{theta} arcmin and zbin1")
+        Maps_z1.append(map_z1) # Add aperture mass map to list
+        Maps_z2.append(map_z2) # Add aperture mass map to list
+        Maps_z3.append(map_z3) # Add aperture mass map to list
+
+    # Calculate Map³
+    if verbose:
+        print(r"Calculating $M_\mathrm{ap}^3$")
+
+    Map3=np.zeros(Nthetas*(Nthetas+1)*(Nthetas+2)//6) #Vector for Map3 measurement
+    counter=0
+    for i in range(Nthetas):
+        for j in range(i, Nthetas):
+            for k in range(j, Nthetas):
+                map3_mean=np.mean(Maps_z1[i][mask1]*Maps_z2[j][mask2]*Maps_z3[k][mask3])
+                Map3[counter]=map3_mean
+                counter+=1
+    
+    if(fn_out!=""): #Save if outputfilename is given
+        np.savetxt(fn_out, Map3)
+
+    if doPlots:
+        initPlot(usetex=False)
+        fig, ax=plt.subplots()
+        prepareMap3Plot(ax)
+        ax.plot(Map3)
+        ax.set_ylabel(r"$\langle M_\mathrm{ap}^3 \rangle$")
+        finalizePlot(ax, title=r"$\langle M_\mathrm{ap}^3\rangle$ from curved sky "+f"nside={nside}")
+        
+        
 def measureMap3FromKappa(kappa, thetas=[4,8,16,32], nside=2048, verbose=False, doPlots=False, fn_out=""):
     """ Measured <Map3> from a convergence map, given as Healpy map
 
