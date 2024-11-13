@@ -35,7 +35,7 @@ def run_integrated3PCF(tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmin
     g1_xiA, g2_xiA, w_xiA, footprint_xiA = read_maps(tomo_xiA,p)
     g1_xiB, g2_xiB, w_xiB, footprint_xiB = read_maps(tomo_xiB,p)
 
-    filepath_output = filepath_map_data+'measurements/shear_Q'+str(int(theta_Q_arcmins))+'W'+str(int(theta_T_arcmins))+'W'+str(int(theta_T_arcmins))+'/'+tomo_Map+'_'+tomo_xiA+'_'+tomo_xiB+'_All_'+n_g+'GpAM/NSIDE_'+str(NSIDE)+'/position_dependent_outputs'+extension+'/'+p+'_weIA_'
+    filepath_output = filepath_map_data+'measurements/shear_Q'+str(int(theta_Q_arcmins))+'W'+str(int(theta_T_arcmins))+'W'+str(int(theta_T_arcmins))+'/'+tomo_Map+'_'+tomo_xiA+'_'+tomo_xiB+'_All_'+n_g+'GpAM/NSIDE_'+str(NSIDE)+'/position_dependent_outputs'+extension+'/'+p+'_'
 
     if (os.path.isdir(filepath_output) == False):
         os.makedirs(filepath_output)
@@ -201,9 +201,9 @@ def run_integrated3PCF(tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmin
         all_patches_xi_mm_Im[i] = GG.xim_im
 
 
-    np.save(filepath_output+'all_patches_M_a_Re.npy', all_patches_M_a_Re)
-    np.save(filepath_output+'all_patches_xi_pp_Re.npy', all_patches_xi_pp_Re)
-    np.save(filepath_output+'all_patches_xi_mm_Re.npy', all_patches_xi_mm_Re)
+    np.save(filepath_output+'weIA_all_patches_M_a_Re.npy', all_patches_M_a_Re)
+    np.save(filepath_output+'weIA_all_patches_xi_pp_Re.npy', all_patches_xi_pp_Re)
+    np.save(filepath_output+'weIA_all_patches_xi_mm_Re.npy', all_patches_xi_mm_Re)
 
     # mean
 
@@ -222,7 +222,7 @@ def run_integrated3PCF(tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmin
                     zeta_app_Re, zeta_amm_Re])
     dat = dat.T
 
-    np.savetxt(filepath_output+'average_over_patches_Re_footprint.dat', dat, delimiter = ' ', header=header)
+    np.savetxt(filepath_output+'weIA_average_over_patches_Re_footprint.dat', dat, delimiter = ' ', header=header)
 
     # stddev
     M_a_Re_std = np.std(all_patches_M_a_Re)
@@ -240,7 +240,7 @@ def run_integrated3PCF(tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmin
                     zeta_app_Re_std, zeta_amm_Re_std]) / np.sqrt(patch_count)
     dat = dat.T
 
-    np.savetxt(filepath_output+'stddev_of_mean_over_patches_Re_footprint.dat', dat, delimiter = ' ', header=header)
+    np.savetxt(filepath_output+'weIA_stddev_of_mean_over_patches_Re_footprint.dat', dat, delimiter = ' ', header=header)
 
     # covariance
 
@@ -250,17 +250,17 @@ def run_integrated3PCF(tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmin
     zeta_app_Re_cov = np.cov((np.vstack(all_patches_M_a_Re)*all_patches_xi_pp_Re).T)  
     zeta_amm_Re_cov = np.cov((np.vstack(all_patches_M_a_Re)*all_patches_xi_mm_Re).T)  
 
-    np.savetxt(filepath_output+'cov_over_patches_xi_pp_Re_footprint.dat', xi_pp_Re_cov, delimiter = ' ')
-    np.savetxt(filepath_output+'cov_over_patches_xi_mm_Re_footprint.dat', xi_mm_Re_cov, delimiter = ' ')
+    np.savetxt(filepath_output+'weIA_cov_over_patches_xi_pp_Re_footprint.dat', xi_pp_Re_cov, delimiter = ' ')
+    np.savetxt(filepath_output+'weIA_cov_over_patches_xi_mm_Re_footprint.dat', xi_mm_Re_cov, delimiter = ' ')
 
-    np.savetxt(filepath_output+'cov_over_patches_zeta_app_Re_footprint.dat', zeta_app_Re_cov, delimiter = ' ')
-    np.savetxt(filepath_output+'cov_over_patches_zeta_amm_Re_footprint.dat', zeta_amm_Re_cov, delimiter = ' ')
+    np.savetxt(filepath_output+'weIA_cov_over_patches_zeta_app_Re_footprint.dat', zeta_app_Re_cov, delimiter = ' ')
+    np.savetxt(filepath_output+'weIA_cov_over_patches_zeta_amm_Re_footprint.dat', zeta_amm_Re_cov, delimiter = ' ')
 
     ### Imaginary parts
 
-    np.save(filepath_output+'all_patches_M_a_Im.npy', all_patches_M_a_Im)
-    np.save(filepath_output+'all_patches_xi_pp_Im.npy', all_patches_xi_pp_Im)
-    np.save(filepath_output+'all_patches_xi_mm_Im.npy', all_patches_xi_mm_Im)
+    np.save(filepath_output+'weIA_all_patches_M_a_Im.npy', all_patches_M_a_Im)
+    np.save(filepath_output+'weIA_all_patches_xi_pp_Im.npy', all_patches_xi_pp_Im)
+    np.save(filepath_output+'weIA_all_patches_xi_mm_Im.npy', all_patches_xi_mm_Im)
 
     # mean
 
@@ -279,7 +279,7 @@ def run_integrated3PCF(tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmin
                     zeta_app_Im, zeta_amm_Im])
     dat = dat.T
 
-    np.savetxt(filepath_output+'average_over_patches_Im_footprint.dat', dat, delimiter = ' ', header=header)
+    np.savetxt(filepath_output+'weIA_average_over_patches_Im_footprint.dat', dat, delimiter = ' ', header=header)
 
     # stddev
 
@@ -298,7 +298,7 @@ def run_integrated3PCF(tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmin
                     zeta_app_Im_std, zeta_amm_Im_std]) / np.sqrt(patch_count)
     dat = dat.T
 
-    np.savetxt(filepath_output+'stddev_of_mean_over_patches_Im_footprint.dat', dat, delimiter = ' ', header=header)
+    np.savetxt(filepath_output+'weIA_stddev_of_mean_over_patches_Im_footprint.dat', dat, delimiter = ' ', header=header)
 
     # covariance
 
@@ -308,15 +308,15 @@ def run_integrated3PCF(tomo_map,tomo_xiA,tomo_xiB,theta_Q_arcmins,theta_T_arcmin
     zeta_app_Im_cov = np.cov((np.vstack(all_patches_M_a_Im)*all_patches_xi_pp_Im).T)  
     zeta_amm_Im_cov = np.cov((np.vstack(all_patches_M_a_Im)*all_patches_xi_mm_Im).T)
 
-    np.savetxt(filepath_output+'cov_over_patches_xi_pp_Im_footprint.dat', xi_pp_Im_cov, delimiter = ' ')
-    np.savetxt(filepath_output+'cov_over_patches_xi_mm_Im_footprint.dat', xi_mm_Im_cov, delimiter = ' ')
+    np.savetxt(filepath_output+'weIA_cov_over_patches_xi_pp_Im_footprint.dat', xi_pp_Im_cov, delimiter = ' ')
+    np.savetxt(filepath_output+'weIA_cov_over_patches_xi_mm_Im_footprint.dat', xi_mm_Im_cov, delimiter = ' ')
 
-    np.savetxt(filepath_output+'cov_over_patches_zeta_app_Im_footprint.dat', zeta_app_Im_cov, delimiter = ' ')
-    np.savetxt(filepath_output+'cov_over_patches_zeta_amm_Im_footprint.dat', zeta_amm_Im_cov, delimiter = ' ')
+    np.savetxt(filepath_output+'weIA_cov_over_patches_zeta_app_Im_footprint.dat', zeta_app_Im_cov, delimiter = ' ')
+    np.savetxt(filepath_output+'weIA_cov_over_patches_zeta_amm_Im_footprint.dat', zeta_amm_Im_cov, delimiter = ' ')
 
     ### angular separations
 
-    np.savetxt(filepath_output+'angular_separations_arcmin.dat', theta.T)
+    np.savetxt(filepath_output+'weIA_angular_separations_arcmin.dat', theta.T)
     
     return None
 

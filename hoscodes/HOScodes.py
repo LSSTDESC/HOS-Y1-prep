@@ -9,7 +9,7 @@ import treecorr
 sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/Map3/')#replace with __init__.py
 sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/PDF_Peaks_Minima/')
 sys.path.append('/global/homes/j/jatorres/HOS-Y1-prep/DSS_clean/')
-from aperture_mass_computer import measureMap3FromKappa
+from aperture_mass_computer import measureMap3FromKappa,measureMap3FromKappa_crossbins
 from Peaks_minima import find_extrema
 from DSS_functions import DSS_class
 
@@ -89,12 +89,23 @@ class kappacodes(kappamaps):
         
         return Cl
 
-    def run_map3(self,Nmap1,thetas,is_cross=False):
-        fn_header = self.filenames[Nmap1].split('/')[-1]
-        fn_out = self.dir_results+'map3/'+fn_header.split('.')[0] + '_map3_DV_thetas.dat'
-        measureMap3FromKappa(self.mapbins[Nmap1], thetas=thetas, nside=self.nside, fn_out=fn_out, verbose=False, doPlots=False)
-        results_map3 = np.loadtxt(fn_out)
-        #self.map3.append(results_map3)
+    def run_map3(self,thetas,Nmap1,Nmap2=None,Nmap3=None,is_cross=False):
+        
+        if is_cross:
+            fn_header = self.filenames[Nmap1].split('/')[-1]
+            fn_out = self.dir_results+'map3/'+fn_header.split('.')[0] + '_cross_Nmap%d_Nmap%d_map3_DV_thetas.dat'%(Nmap2+1,Nmap3+1)
+            map1 = self.mapbins[Nmap1]
+            map2 = self.mapbins[Nmap2]
+            map3 = self.mapbins[Nmap3]
+            measureMap3FromKappa_crossbins(map1, map2, map3, thetas=thetas, nside=self.nside, verbose=False, doPlots=False, fn_out=fn_out)
+            results_map3 = np.loadtxt(fn_out)
+        else:
+            fn_header = self.filenames[Nmap1].split('/')[-1]
+            fn_out = self.dir_results+'map3/'+fn_header.split('.')[0] + '_map3_DV_thetas.dat'
+            map1 = self.mapbins[Nmap1]
+            measureMap3FromKappa(map1, thetas=thetas, nside=self.nside, fn_out=fn_out, verbose=False, doPlots=False)
+            results_map3 = np.loadtxt(fn_out)
+        
         return results_map3
     
     def run_PDFPeaksMinima(self,map1_smooth,Nmap1,map2_smooth=None,Nmap2=None,is_cross=False):

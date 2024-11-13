@@ -13,7 +13,7 @@ if is_IA:
 
     IA_params_dict = {'noIA':['noIA'],
                       'NLA':['AIAp1','AIAm1'],
-                      'deltaNLA':['noIA_bta1','AIAp1_bta1','AIAp1_bta2'],
+                      'deltaNLA':['noAI_bta1','AIAp1_bta1','AIAp1_bta2'],
                       'deltaTT':['C2p1_bta1','C2m1_bta1'],
                       'TATT':['AIAp1_C2p1_bta1'],
                       'TT':['C2p1','C2m1'],
@@ -37,7 +37,7 @@ dir_results='/pscratch/sd/j/jatorres/data/HOScodes/SkySim5000IA/'+IA_model+'/'
 
 for _,s_l in enumerate(theta_smoothing_scale_bins):
 
-    filenames = [maps_names + 'smoothed_theta%d_kappa_skysim5000_'%(s_l)+prefix+'_noisefree_tomo%d.dat.npy'%i for i in range(1,6)]
+    filenames = [maps_names + 'smoothed_theta%d_kappa_skysim5000_'%(s_l)+prefix+'_noisy_tomo%d.dat.npy'%i for i in range(1,6)]
     
     #filenames = np.sort(glob(fm))
 
@@ -50,7 +50,7 @@ for _,s_l in enumerate(theta_smoothing_scale_bins):
     for i,map_i in enumerate(kappa_maps.mapbins):
         print('Tomobin: %d'%i)
 
-        #kappa_maps.run_PDFPeaksMinima(map_i,i)
+        kappa_maps.run_PDFPeaksMinima(map_i,i)
         print('PDF,peaks,minima done...')
         
         for j in range(i):
