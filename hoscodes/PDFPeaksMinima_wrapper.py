@@ -5,56 +5,54 @@ from glob import glob
 #cd ./HOS-Y1-prep/hoscodes/
 #SkySim5000 maps
 
-IA_params_dict = {'noIA':['noIA'],
-                  'NLA':['AIAp1','AIAm1'],
-                  'deltaNLA':['AIAp1_bta1','AIAp1_bta2'],
-                  'deltaTT':['C2m1_bta1','C2p1_bta1'],
-                  'TATT':['AIAp1_C2p1_bta1'],
-                  'TT':['C2p1','C2m1'],
-                  'HODNLA':['AIAp1'],
-                  'HODTT':['A2p1']}# If new model or free pars., please add here
+maps_names = sys.argv[1]
+IA_model = sys.argv[2]#maps_names.split('/')[-2] 
 
-maps_path = sys.argv[1]#'/global/cfs/cdirs/desc-wl/projects/wl-massmap/IA-infusion/SkySim5000/kappa/nz_SRD_KS/NLA/'
-IA_model = sys.argv[2]#maps_path.split('/')[-2]
+is_IA = True
+if is_IA:
 
-nside= 4096# We down the original resolution (NSIDE=8192) to the one used by the other maps
-thetas=[4,8,16,32] #Mass aperture radii Map3
-nshell = 57#[19,106,50] #in haccy1
-sl_arcmin= [5.0,8.0,10.25]
-#sl = sl_arcmin[2]
+    IA_params_dict = {'noIA':['noIA'],
+                      'NLA':['AIAp1','AIAm1'],
+                      'deltaNLA':['noAI_bta1','AIAp1_bta1','AIAp1_bta2'],
+                      'deltaTT':['C2p1_bta1','C2m1_bta1'],
+                      'TATT':['AIAp1_C2p1_bta1'],
+                      'TT':['C2p1','C2m1'],
+                      'HODNLA':['AIAp1'],
+                      'HODTT':['A2p1']}
+    f = int(sys.argv[3])
+
+    if IA_model == 'noIA':
+        prefix = IA_model
+
+    else:
+        param = IA_params_dict[IA_model][f]
+        prefix = IA_model + '_' + param 
+
+nside= 4096#
 #
+theta_smoothing_scale_bins = [1,2,3,4,5]
+
+
 dir_results='/pscratch/sd/j/jatorres/data/HOScodes/SkySim5000IA/'+IA_model+'/'
 
-free_par = IA_params_dict[IA_model]
+for _,s_l in enumerate(theta_smoothing_scale_bins):
 
-for f in free_par:
-    for s_i,s_l in enumerate(sl_arcmin):
+    filenames = [maps_names + 'smoothed_theta%d_kappa_skysim5000_'%(s_l)+prefix+'_noisy_tomo%d.dat.npy'%i for i in range(1,6)]
     
-        print('for params {0}'.format(f))
-        if IA_model == 'noIA':
-            fm = maps_path+'smoothed_theta%d_kappa_skysim5000_'%(s_i+1)+f+'_noisefree_*.npy'
+    #filenames = np.sort(glob(fm))
 
-        elif IA_model == 'HODNLA' or IA_model == 'HODTT':
-            fm = maps_path+'smoothed_theta%d_kappa_skysim5000_'%(s_i+1)+f+'_'+IA_model+'_noisefree_*.npy'
+    kappa_maps = kappacodes(dir_results=dir_results,
+                            filenames=filenames,
+                            nside=nside)
 
+    kappa_maps.readmaps_npy()
 
+    for i,map_i in enumerate(kappa_maps.mapbins):
+        print('Tomobin: %d'%i)
 
-        else:
-            fm = maps_path+'smoothed_theta%d_kappa_skysim5000_'%(s_i+1)+IA_model+'_'+f+'_noisefree_*.npy'
-        filenames = np.sort(glob(fm))
-
-    #filenames = os.listdir(raw_maps_path)
-    #map_names = [raw_maps_path+s for s in filenames]
-
-        kappa_maps = kappacodes(dir_results=dir_results,
-                                filenames=filenames,
-                                nside=nside)
-        #kappa_maps.readmaps_healpy()
-        kappa_maps.readmaps_npy()#maps can be in npy,fits or healpy_fits(masked) format
-
-        for i,map_i in enumerate(kappa_maps.mapbins):
-            print('Tomobin: %d'%i)
-
-            kappa_maps.run_PDFPeaksMinima(map_i,i)
-            print('PDF,peaks,minima done...')
+        kappa_maps.run_PDFPeaksMinima(map_i,i)
+        print('PDF,peaks,minima done...')
         
+        for j in range(i):
+            kappa_maps.run_PDFPeaksMinima(map_i,i,kappa_maps.mapbins[j],j,is_cross=True)
+            print('map2 cross %d %d done...'%(i,j))
