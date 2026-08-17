@@ -1,0 +1,111 @@
+# ============================================================
+# Input dataset
+# ============================================================
+
+dataset:
+  name: HACC-Y1-BCM
+
+  parent_dir: /global/cfs/cdirs/lsst/groups/WL/projects/wl-massmap
+  subdir: IA-infusion/BCM
+
+  # Number of tomographic bins expected.
+  tomographic_bins: [1, 2, 3, 4, 5]
+
+# ============================================================
+# Selected model
+# ============================================================
+
+model:
+  bcm_model: dmo
+
+  # Physical IA metadata.
+  ia_enabled: true
+  ia_model: NLA
+  ia_amplitude: AIAp1
+
+  number_density: "0.5"
+  noise: noisefree
+
+# ============================================================
+# Input map/catalogue type
+# ============================================================
+
+input:
+  # Supported examples:
+  #   GalCat
+  #   shear
+  #   kappa
+  #   kappa-KS
+  map_type: GalCat
+
+#input:
+#  map_type: kappa-KS
+#  ia_filename_tag: noAI
+
+  # Filename token used to identify the IA realization.
+  #
+  # For GalCat this is often an amplitude token:
+  #   AIAp1, AIA0, AIAm1, ...
+  #
+  # For kappa-KS this may instead be:
+  #   noAI, NLA, TT, TATT, ...
+  ia_filename_tag: AIAp1
+
+  # Glob patterns are relative to:
+  #
+  #   parent_dir / subdir / bcm_model
+  #
+  # "{tomo}" and the other fields are filled by Python.
+  patterns:
+    GalCat:
+      - "GalCat/*{ia_filename_tag}*tomo{tomo}_{number_density}Mpc.dat"
+
+    shear:
+      - "shear/*{ia_filename_tag}*{noise}*tomo{tomo}*.npy"
+      - "shear/*{ia_filename_tag}*tomo{tomo}*.npy"
+
+    kappa:
+      - "kappa/*{ia_filename_tag}*{noise}*tomo{tomo}*.npy"
+      - "kappa/*{ia_filename_tag}*tomo{tomo}*.npy"
+
+    kappa-KS:
+      - "kappa-KS/*{ia_filename_tag}*{noise}*tomo{tomo}*.npy"
+      - "kappa-KS/*{ia_filename_tag}*tomo{tomo}*.npy"
+
+# ============================================================
+# Initial map-generation output
+# ============================================================
+
+map_generation:
+  nside_out: 2048
+
+  output_root: /pscratch/sd/j/jatorres/data/lsst/HACC-Y1
+
+  # The resolver can construct:
+  #
+  # output_root /
+  # bcm_model /
+  # map_type /
+  # ia_filename_tag /
+  # noise
+  #
+  create_output_directory: true
+
+# ============================================================
+# Postprocessing configuration
+# ============================================================
+
+postprocessing:
+  enabled: false
+
+  mask:
+    enabled: true
+    path: /pscratch/sd/j/jatorres/data/lsst/SkySim5000_Octant_Nside4096.npy
+    name: HACC-Y1-mask
+
+  smoothing:
+    enabled: false
+    name: no-smoothing
+    scale_arcmin: 0.0
+
+
