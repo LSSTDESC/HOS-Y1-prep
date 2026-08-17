@@ -2,7 +2,8 @@ import numpy as np
 import treecorr
 import os,sys
 import healpy as hp
-from hoscodes.map_utils import
+from hoscodes.map_utils import *
+from hoscodes import HOScodes
 #import time
 #start = time.time()
 
@@ -21,28 +22,21 @@ if __name__ == "__main__":
     tomo_Map = 'tomo%d'%Ntomo1 # will be used for computing the aperture mass
     tomo_xiA = 'tomo%d'%Ntomo2 # will be used for computing position dependent 2PCF
     tomo_xiB = 'tomo%d'%Ntomo3 # will be used for computing position dependent 2PCF
-    if is_shear_IA:
-        g1_tomoMap_name = filepath_map_data+'g1+IA_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_Map,n_g,NSIDE)
-        g2_tomoMap_name = filepath_map_data+'g2+IA_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_Map,n_g,NSIDE)
-        g1_tomoxiA_name = filepath_map_data+'g1+IA_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiA,n_g,NSIDE)
-        g2_tomoxiA_name = filepath_map_data+'g2+IA_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiA,n_g,NSIDE)
-        g1_tomoxiB_name = filepath_map_data+'g1+IA_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiB,n_g,NSIDE)
-        g2_tomoxiB_name = filepath_map_data+'g2+IA_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiB,n_g,NSIDE)
-    else:
-        g1_tomoMap_name = filepath_map_data+'g1_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_Map,n_g,NSIDE)
-        g2_tomoMap_name = filepath_map_data+'g2_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_Map,n_g,NSIDE)
-        g1_tomoxiA_name = filepath_map_data+'g1_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiA,n_g,NSIDE)
-        g2_tomoxiA_name = filepath_map_data+'g2_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiA,n_g,NSIDE)
-        g1_tomoxiB_name = filepath_map_data+'g1_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiB,n_g,NSIDE)
-        g2_tomoxiB_name = filepath_map_data+'g2_GalMap_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiB,n_g,NSIDE)
+
+    g1_tomoMap_name = 
+    g2_tomoMap_name = 
+    g1_tomoxiA_name = 
+    g2_tomoxiA_name = 
+    g1_tomoxiB_name = 
+    g2_tomoxiB_name = 
         
-    w1_name = filepath_map_data+'weight_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_Map,n_g,NSIDE)
-    w2_name = filepath_map_data+'weight_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiA,n_g,NSIDE)
-    w3_name = filepath_map_data+'weight_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiB,n_g,NSIDE)
+    w1_name = 
+    w2_name = 
+    w3_name = 
     
-    footprint1_name = filepath_map_data+'footprint_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_Map,n_g,NSIDE)
-    footprint2_name = filepath_map_data+'footprint_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiA,n_g,NSIDE)
-    footprint3_name = filepath_map_data+'footprint_%s_%s_All_%sGpAM_nside_%d.fits'%(p,tomo_xiB,n_g,NSIDE)
+    footprint1_name = 
+    footprint2_name = 
+    footprint3_name = 
 
     g1_Map, g2_Map, w_Map, footprint_Map = read_maps(g1_tomoMap_name,g2_tomoMap_name,w1_name,footprint1_name,p)
     g1_xiA, g2_xiA, w_xiA, footprint_xiA = read_maps(g1_tomoxiA_name,g2_tomoxiA_name,w2_name,footprint2_name,p)

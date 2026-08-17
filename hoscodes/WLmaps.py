@@ -1,7 +1,7 @@
 import numpy as np
 import healpy as hp
 import os,sys
-from map_utils import *
+from hoscodes.map_utils import *
 
 
 class kappaMaps():
@@ -12,13 +12,29 @@ class kappaMaps():
         filenames: NERSC location.
         smoothing_scale: If any. None by default (raw map)
     """
-    def __init__(self,filenames,nside,smoothing_scale=None):
+    def __init__(self,nside,filenames=None,mask=None,smoothing_scale=None):
+        self.mask = mask
         self.nside= nside
         self.filenames = filenames
         self.smoothing_scale = smoothing_scale
         self.pixel_resolution = hp.pixelfunc.nside2resol(self.nside, arcmin=True)
 
+    def loadMap(self,fn,file_format):
+        """If reading only 1 map (no tomographic)"""
+        if file_format == 'fits':
+            self.kappamap = fits_readmap(fn)
+
+        elif file_format == 'numpy':
+            self.kappamap = numpy_readmap(fn)
+         
+        elif file_format == 'healpy':
+            self.kappamap = healpy_readmap(fn)
+
+        else:
+            raise TypeError("only implemented fits, healpy and numpy types")        
+        
     def MakeTomographic(self,file_format):
+        """ Loads all tomographic maps from list: filenames"""
         if file_format == 'fits':
             self.tomobins = [fits_readmap(fn) for fn in self.filenames]
 
@@ -30,6 +46,7 @@ class kappaMaps():
 
         else:
             raise TypeError("only implemented fits, healpy and numpy types")
+
 
 
 class gammaMaps():
