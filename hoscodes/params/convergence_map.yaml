@@ -79,6 +79,9 @@ input:
 map_generation:
   nside_out: 2048
 
+  # Preserve the sign convention used by the previous map_smoothing.py.
+  convergence_multiplier: 1.0
+
   output_root: /pscratch/sd/j/jatorres/data/lsst/HACC-Y1/Kappa
 
   # The resolver can construct:
@@ -96,7 +99,7 @@ map_generation:
 # ============================================================
 
 postprocessing:
-  enabled: false
+  enabled: true
 
   mask:
     enabled: true
@@ -104,8 +107,8 @@ postprocessing:
     name: HACC-Y1-mask
 
   smoothing:
-    enabled: false
-    name: no-smoothing
-    scale_arcmin: 0.0
-
+    enabled: true
+    name: gaussian-boundary-corrected
+    scales_arcmin: [2.0, 10.0]
+    output_subdir: smoothed_maps
 
